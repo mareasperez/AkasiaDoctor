@@ -4,13 +4,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from textual.widgets import OptionList
+from textual.widgets import OptionList, RichLog
 
 from akasia.config import AppPaths
 from akasia.operations import DoctorOperations
 from akasia.repository import DoctorRepository
 from akasia.service import DoctorService, now
-from akasia.tui import DoctorApp, ResetConfirmation
+from akasia.tui import ActivityScreen, DoctorApp, ResetConfirmation
 
 
 class DashboardTests(unittest.TestCase):
@@ -48,6 +48,116 @@ class DashboardTests(unittest.TestCase):
                 app.query_one("#items", OptionList).focus()
                 await pilot.press("enter")
                 self.assertEqual(self.service.get("selected_exe"), "C:/Akasia.exe")
+
+        asyncio.run(check())
+
+    def test_selection_and_navigation_work_during_analysis(self):
+        stamp = now()
+        self.service.save_installation("C:/Akasia-old.exe", "1.0", stamp, None, stamp)
+        self.service.save_installation("C:/Akasia-new.exe", "2.0", stamp, None, stamp)
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            async with app.run_test(size=(100, 32)) as pilot:
+                app.busy = True
+                items = app.query_one("#items", OptionList)
+                items.highlighted = 1
+                items.focus()
+                await pilot.press("enter")
+                self.assertEqual(self.service.get("selected_exe"), "C:/Akasia-new.exe")
+                nav = app.query_one("#nav", OptionList)
+                nav.focus()
+                await pilot.press("down", "enter")
+                self.assertEqual(app.view, "shortcuts")
+
+        asyncio.run(check())
+
+    def test_activity_can_be_expanded_to_read_full_error(self):
+        stamp = now()
+        self.service.save_installation("C:/Akasia.exe", "1.0", stamp, None, stamp)
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            async with app.run_test(size=(100, 32)) as pilot:
+                app.log_message("Akasia exited: -532462766 (0xE0434352)\nWindows event: full error details")
+                await pilot.click("#expand-activity")
+                self.assertIsInstance(app.screen, ActivityScreen)
+                detail = app.screen.query_one("#activity-detail", RichLog)
+                self.assertIn("Windows event: full error details", "\n".join(
+                    "".join(segment.text for segment in line) for line in detail.lines
+                ))
+                app.log_message("More diagnostic detail")
+                self.assertIn("More diagnostic detail", "\n".join(
+                    "".join(segment.text for segment in line) for line in detail.lines
+                ))
+                with patch.object(app.screen, "get_selected_text", return_value="full error"), \
+                     patch.object(app, "copy_to_clipboard") as copy:
+                    await pilot.press("ctrl+c")
+                    copy.assert_called_once_with("full error")
+                await pilot.click("#close-activity")
+                self.assertNotIsInstance(app.screen, ActivityScreen)
+
+        asyncio.run(check())
+
+    def test_ctrl_c_copies_first_and_quits_on_second_press(self):
+        stamp = now()
+        self.service.save_installation("C:/Akasia.exe", "1.0", stamp, None, stamp)
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            async with app.run_test(size=(100, 32)) as pilot:
+                with patch.object(app.screen, "get_selected_text", return_value="full error"), \
+                     patch.object(app, "copy_to_clipboard") as copy:
+                    await pilot.press("ctrl+c")
+                    copy.assert_called_once_with("full error")
+                    self.assertTrue(app.is_running)
+                    await pilot.press("ctrl+c")
+                    self.assertFalse(app.is_running)
+
+        asyncio.run(check())
+
+    def test_ctrl_c_without_selection_requires_second_press_to_quit(self):
+        stamp = now()
+        self.service.save_installation("C:/Akasia.exe", "1.0", stamp, None, stamp)
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            async with app.run_test(size=(100, 32)) as pilot:
+                await pilot.press("ctrl+c")
+                self.assertTrue(app.is_running)
+                await pilot.press("ctrl+c")
+                self.assertFalse(app.is_running)
+
+        asyncio.run(check())
+
+    def test_launch_failure_is_visible_in_expanded_activity(self):
+        executable = self.paths.data / "Akasia.exe"
+        executable.touch()
+        stamp = now()
+        self.service.save_installation(str(executable), "1.0", stamp, None, stamp)
+        self.service.set("selected_exe", str(executable))
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            with patch("akasia.operations.subprocess.Popen", side_effect=OSError("cannot launch")), \
+                 patch("akasia.operations.LOGGER"):
+                async with app.run_test(size=(100, 32)) as pilot:
+                    await pilot.click("#launch")
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    await pilot.click("#expand-activity")
+                    detail = app.screen.query_one("#activity-detail", RichLog)
+                    self.assertIn("OSError: cannot launch", "\n".join(
+                        "".join(segment.text for segment in line) for line in detail.lines
+                    ))
 
         asyncio.run(check())
 

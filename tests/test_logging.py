@@ -134,7 +134,10 @@ class LoggingTests(unittest.TestCase):
 
         try:
             with patch("akasia.operations.subprocess.Popen", side_effect=OSError("cannot launch")):
-                self.assertIn("cannot launch", operations.launch_exe(str(executable)))
+                result = operations.launch_exe(str(executable))
+                self.assertIn("cannot launch", result)
+                self.assertIn("Traceback (most recent call last)", result)
+                self.assertIn("OSError: cannot launch", result)
         finally:
             repository.close()
 

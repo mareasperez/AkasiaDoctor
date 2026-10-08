@@ -2,10 +2,12 @@
 
 import logging
 import sqlite3
+import time
 from typing import Optional
 
 from textual import on, work
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Footer, Header, OptionList, RichLog, Static
@@ -46,6 +48,37 @@ class ResetConfirmation(ModalScreen[bool]):
         self.dismiss(True)
 
 
+class ActivityScreen(ModalScreen[None]):
+    CSS = """
+    ActivityScreen { align: center middle; }
+    #activity-dialog { width: 90%; height: 90%; background: #193039;
+                       border: round #dbab65; padding: 1 2; }
+    #activity-detail { height: 1fr; border: solid #3a6662; background: #152b32; }
+    #close-activity { dock: bottom; margin-top: 1; }
+    """
+
+    def __init__(self, messages: list[str]) -> None:
+        super().__init__()
+        self.messages = messages
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="activity-dialog"):
+            yield Static("ACTIVITY")
+            yield RichLog(id="activity-detail", wrap=True, markup=False)
+            yield Button("Close", id="close-activity")
+
+    def on_mount(self) -> None:
+        for message in self.messages:
+            self.append(message)
+
+    def append(self, message: str) -> None:
+        self.query_one("#activity-detail", RichLog).write(message)
+
+    @on(Button.Pressed, "#close-activity")
+    def close(self) -> None:
+        self.dismiss()
+
+
 class DoctorApp(App[None]):
     TITLE = "Akasia Doctor"
     SUB_TITLE = "ClickOnce diagnostics"
@@ -63,10 +96,12 @@ class DoctorApp(App[None]):
     #items { height: 1fr; background: #101d25; margin-top: 1; }
     #actions { height: 4; align: left middle; }
     #actions Button { margin-right: 1; min-width: 14; }
-    #activity-title { height: 2; color: #f0bb74; text-style: bold; }
+    #activity-header { height: 3; align: left middle; }
+    #activity-title { width: 1fr; color: #f0bb74; text-style: bold; }
     #activity { height: 8; border: solid #3a6662; background: #152b32; }
     """
-    BINDINGS = [("q", "quit_doctor", "Quit"), ("s", "scan", "Scan"), ("r", "refresh", "Refresh")]
+    BINDINGS = [Binding("ctrl+c", "copy_or_quit", show=False, priority=True),
+                ("q", "quit_doctor", "Quit"), ("s", "scan", "Scan"), ("r", "refresh", "Refresh")]
 
     def __init__(self, service: DoctorService, operations: DoctorOperations) -> None:
         super().__init__()
@@ -74,6 +109,8 @@ class DoctorApp(App[None]):
         self.operations = operations
         self.view = "installations"
         self.busy = False
+        self._last_ctrl_c: float | None = None
+        self.activity_messages: list[str] = []
         self.config_items: list[ConfigScan] = []
         self.rows: list[sqlite3.Row] = []
 
@@ -100,7 +137,9 @@ class DoctorApp(App[None]):
                     yield Button("Select", id="select")
                     yield Button("Launch", id="launch", variant="success")
                     yield Button("Open log folder", id="open-logs")
-                yield Static("ACTIVITY", id="activity-title")
+                with Horizontal(id="activity-header"):
+                    yield Static("ACTIVITY", id="activity-title")
+                    yield Button("Expand", id="expand-activity")
                 yield RichLog(id="activity", wrap=True, markup=False)
         yield Footer()
 
@@ -114,6 +153,18 @@ class DoctorApp(App[None]):
             self.notify("Wait for the current operation to finish.", severity="warning")
         else:
             self.exit()
+
+    def action_copy_or_quit(self) -> None:
+        current_time = time.monotonic()
+        if self._last_ctrl_c is not None and current_time - self._last_ctrl_c < 2:
+            self.exit()
+            return
+        self._last_ctrl_c = current_time
+        selected_text = self.screen.get_selected_text()
+        if selected_text:
+            self.copy_to_clipboard(selected_text)
+        else:
+            self.notify("Press Ctrl+C again to quit.")
 
     def action_scan(self) -> None:
         self.start_operation("scan")
@@ -169,13 +220,13 @@ class DoctorApp(App[None]):
 
     @on(OptionList.OptionSelected, "#nav")
     def navigate(self, event: OptionList.OptionSelected) -> None:
-        if not self.busy and event.option.id is not None:
+        if event.option.id is not None:
             self.view = event.option.id
             self.refresh_view()
 
     @on(OptionList.OptionSelected, "#items")
     def choose(self, event: OptionList.OptionSelected) -> None:
-        if not self.busy and self.view in ("installations", "shortcuts"):
+        if self.view in ("installations", "shortcuts"):
             self.select_row(event.option_index)
 
     def select_row(self, index: Optional[int]) -> None:
@@ -202,7 +253,7 @@ class DoctorApp(App[None]):
 
     @on(Button.Pressed, "#select")
     def select(self) -> None:
-        if self.busy:
+        if self.busy and self.view == "config":
             return
         if self.view == "config":
             if any(not item["valid"] for item in self.config_items):
@@ -224,8 +275,15 @@ class DoctorApp(App[None]):
     def open_logs(self) -> None:
         self.start_operation("logs")
 
+    @on(Button.Pressed, "#expand-activity")
+    def expand_activity(self) -> None:
+        self.push_screen(ActivityScreen(self.activity_messages))
+
     def log_message(self, message: str) -> None:
+        self.activity_messages.append(message)
         self.query_one("#activity", RichLog).write(message)
+        if isinstance(self.screen, ActivityScreen):
+            self.screen.append(message)
         LOGGER.info("%s", message)
 
     def start_operation(self, action: str) -> None:

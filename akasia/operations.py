@@ -8,6 +8,7 @@ import re
 import shutil
 import socket
 import subprocess
+import traceback
 import time
 import uuid
 import xml.etree.ElementTree as ET
@@ -115,7 +116,7 @@ class DoctorOperations:
         except Exception as exc:
             LOGGER.exception("Unable to launch executable %s", path)
             self.service.record_launch("exe", str(path), row["version"], "start_failed", error=str(exc))
-            return f"Unable to start Akasia: {exc}"
+            return f"Unable to start Akasia: {exc}\n{traceback.format_exc()}"
 
     def launch_shortcut(self, path: Optional[str]) -> str:
         if not path or not Path(path).exists():
@@ -127,7 +128,7 @@ class DoctorOperations:
         except Exception as exc:
             LOGGER.exception("Unable to open shortcut %s", path)
             self.service.record_launch("shortcut", path, None, "start_failed", error=str(exc))
-            return f"Unable to open shortcut: {exc}"
+            return f"Unable to open shortcut: {exc}\n{traceback.format_exc()}"
 
     def find_configs(self) -> list[ConfigScan]:
         results: list[ConfigScan] = []

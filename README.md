@@ -14,12 +14,12 @@ The executable bundles Python and its dependencies. No Python or Poetry installa
 
 ## Use the dashboard
 
-1. Open **Versions**. The first run scans automatically; use **Scan** to refresh. Select a version, then choose **Launch**. Check **Activity** for the immediate result and **History** for past launches.
+1. Open **Versions**. The first run scans automatically; use **Scan** to refresh. You can change the selected version while a scan is running. Select a version, then choose **Launch**. Check **Activity** for the immediate result; use **Expand** to scroll through the full error, or **History** for past launches.
 2. Open **Shortcuts** to select and launch a ClickOnce shortcut instead of an executable.
 3. Open **Configuration** and choose **Analyze**. If a damaged `user.config` appears, choose **Reset damaged** and confirm to back it up and rename it.
 4. Open **Network** to run **Test DNS**, or **Reports** to export the diagnostic history as JSON or choose **Open log folder**.
 
-The sidebar and lists support keyboard navigation; press `q` to quit. Backups and reports are saved under `%LOCALAPPDATA%\AkasiaDoctor` by default.
+The sidebar and lists support keyboard navigation. Select text and press `Ctrl+C` to copy it; press `Ctrl+C` again within two seconds to quit. You can also press `q` to quit. Backups and reports are saved under `%LOCALAPPDATA%\AkasiaDoctor` by default.
 
 ## Run from source
 
