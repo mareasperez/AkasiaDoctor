@@ -25,6 +25,10 @@ class AppPaths:
     def reports(self):
         return self.data / "Reports"
 
+    @property
+    def logs(self):
+        return self.data / "Logs"
+
 
 def resolve_paths(data_dir: Optional[Union[str, Path]] = None,
                   environ: Optional[Mapping[str, str]] = None,

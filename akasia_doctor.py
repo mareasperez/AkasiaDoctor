@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 
 from akasia.config import resolve_paths
+from akasia.logging_config import configure_logging
 from akasia.operations import DoctorOperations
 from akasia.repository import DoctorRepository
 from akasia.service import DoctorService
@@ -17,13 +18,14 @@ def main():
     args = parser.parse_args()
 
     paths = resolve_paths(args.data_dir)
-    for folder in (paths.data, paths.backups, paths.reports):
-        folder.mkdir(parents=True, exist_ok=True)
-
-    repository = DoctorRepository(paths.database)
-    service = DoctorService(repository)
-    operations = DoctorOperations(service, paths)
+    logger = configure_logging(paths)
+    repository = None
     try:
+        for folder in (paths.data, paths.backups, paths.reports):
+            folder.mkdir(parents=True, exist_ok=True)
+        repository = DoctorRepository(paths.database)
+        service = DoctorService(repository)
+        operations = DoctorOperations(service, paths)
         if args.scan_only:
             executables, shortcuts = operations.scan()
             print(f"Found {executables} executable(s) and {shortcuts} shortcut(s).")
@@ -33,8 +35,12 @@ def main():
             from akasia.tui import DoctorApp
 
             DoctorApp(service, operations).run()
+    except Exception:
+        logger.exception("Akasia Doctor failed")
+        raise
     finally:
-        repository.close()
+        if repository is not None:
+            repository.close()
 
 
 if __name__ == "__main__":

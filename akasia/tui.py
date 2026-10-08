@@ -1,5 +1,6 @@
 """Interactive terminal dashboard for Akasia Doctor."""
 
+import logging
 import sqlite3
 from typing import Optional
 
@@ -11,8 +12,11 @@ from textual.widgets import Button, Footer, Header, OptionList, RichLog, Static
 from textual.widgets.option_list import Option
 
 from .models import ConfigScan
+from .logging_config import LOGGER_NAME
 from .operations import DoctorOperations
 from .service import DoctorService
+
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 class ResetConfirmation(ModalScreen[bool]):
@@ -251,6 +255,7 @@ class DoctorApp(App[None]):
             else:
                 result = self.operations.launch_shortcut(self.service.get("selected_shortcut"))
         except Exception as exc:
+            LOGGER.exception("Operation %s failed", action)
             result = f"Operation failed: {exc}"
         self.call_from_thread(self.finish_action, result)
 
