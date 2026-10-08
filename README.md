@@ -26,7 +26,12 @@ poetry install --with build
 poetry run python -m unittest discover -s tests -v
 ```
 
-The GitHub Actions release workflow runs these tests, builds the executable on Windows, checks that it starts, and attaches it to a GitHub Release when a version tag such as `v1.0.0` is pushed. To run it manually from Actions, first push an existing version tag to GitHub, then enter that exact tag (including the `v`, if present). The workflow needs repository Actions enabled and permission to write Releases.
+There are two ways to start a release after pushing the desired commit:
+
+- Push a version tag such as `v1.0.0`: the Release Windows executable workflow runs automatically.
+- In GitHub Actions, run Create version tag on the desired branch and enter `1.0.0`: it creates `v1.0.0` on that commit and starts the Release Windows executable workflow.
+
+The release workflow tests, builds on Windows, checks the executable, and attaches it to a GitHub Release. A version tag can be created only once. Repository Actions must be enabled and allowed to write repository contents and run workflows.
 
 ## Persistent history
 
