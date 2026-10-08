@@ -38,7 +38,7 @@ The data directory defaults to `%LOCALAPPDATA%\AkasiaDoctor`. To change it, set 
 
 ## Application logs
 
-Failures in Akasia Doctor itself are written with tracebacks to `%LOCALAPPDATA%\AkasiaDoctor\Logs\doctor.log`, or to the `Logs` folder under your configured data directory. In the dashboard, **Reports** → **Open log folder** opens that location in Windows Explorer. The active log rotates at local midnight; dated files such as `doctor.log.2026-10-07` are retained for 14 days. Logs may include local file paths, so review them before sharing.
+Activity and failures in Akasia Doctor are written to `%LOCALAPPDATA%\AkasiaDoctor\Logs\doctor-YYYY-MM-DD.log`, or to the `Logs` folder under your configured data directory. Failures include full tracebacks. In the dashboard, **Reports** → **Open log folder** opens that location in Windows Explorer. A new dated file starts with the first message after local midnight; the previous day's file remains available, with 14 previous days retained. Existing `doctor.log` files from older versions are left untouched. Logs may include local file paths, so review them before sharing.
 
 ## Build and release
 

@@ -2,6 +2,7 @@
 
 import datetime as dt
 import json
+import logging
 import os
 import re
 import shutil
@@ -14,11 +15,13 @@ from pathlib import Path
 from typing import Optional
 
 from .config import AppPaths
+from .logging_config import LOGGER_NAME
 from .models import ConfigScan
 from .service import DoctorService, now
 
 
 IS_WINDOWS = os.name == "nt"
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 def path_hash(path: Path) -> Optional[str]:
@@ -110,6 +113,7 @@ class DoctorOperations:
             diagnosis = "\nDiagnosis: unhandled .NET exception." if hex_code == "0xE0434352" else ""
             return f"Akasia exited: {code} ({hex_code}){diagnosis}" + (f"\nWindows event: {event}" if event else "")
         except Exception as exc:
+            LOGGER.exception("Unable to launch executable %s", path)
             self.service.record_launch("exe", str(path), row["version"], "start_failed", error=str(exc))
             return f"Unable to start Akasia: {exc}"
 
@@ -121,6 +125,7 @@ class DoctorOperations:
             self.service.record_launch("shortcut", path, None, "invoked")
             return "ClickOnce shortcut invoked."
         except Exception as exc:
+            LOGGER.exception("Unable to open shortcut %s", path)
             self.service.record_launch("shortcut", path, None, "start_failed", error=str(exc))
             return f"Unable to open shortcut: {exc}"
 
@@ -165,6 +170,7 @@ class DoctorOperations:
                 shutil.copy2(original, backup)
                 original.rename(renamed)
             except Exception as exc:
+                LOGGER.exception("Unable to back up and reset %s", original)
                 result, error = "failed", str(exc)
             self.service.record_backup(original, backup, renamed, result, error)
             results.append((original, result, error))
@@ -179,6 +185,7 @@ class DoctorOperations:
                 self.service.record_network_test(host, addresses)
                 results.append((host, addresses, None))
             except Exception as exc:
+                LOGGER.exception("DNS lookup failed for %s", host)
                 self.service.record_network_test(host, error=str(exc))
                 results.append((host, [], str(exc)))
         self.service.commit()

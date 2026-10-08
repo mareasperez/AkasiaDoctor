@@ -226,6 +226,7 @@ class DoctorApp(App[None]):
 
     def log_message(self, message: str) -> None:
         self.query_one("#activity", RichLog).write(message)
+        LOGGER.info("%s", message)
 
     def start_operation(self, action: str) -> None:
         if self.busy:
