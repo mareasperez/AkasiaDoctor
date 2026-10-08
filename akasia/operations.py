@@ -11,19 +11,22 @@ import time
 import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Optional
 
-from .service import now
+from .config import AppPaths
+from .models import ConfigScan
+from .service import DoctorService, now
 
 
 IS_WINDOWS = os.name == "nt"
 
 
-def path_hash(path):
+def path_hash(path: Path) -> Optional[str]:
     found = re.findall(r"(?i)([0-9a-f]{16})(?=[\\/]|$)", str(path))
     return found[-1].lower() if found else None
 
 
-def file_version(path):
+def file_version(path: Path) -> str:
     if not IS_WINDOWS:
         return ""
     escaped = str(path).replace("'", "''")
@@ -35,14 +38,14 @@ def file_version(path):
         return ""
 
 
-def shortcut_roots():
+def shortcut_roots() -> list[Path]:
     roaming = Path(os.environ.get("APPDATA", Path.home() / "AppData/Roaming"))
     program_data = Path(os.environ.get("PROGRAMDATA", "C:/ProgramData"))
     candidates = [Path.home() / "Desktop", roaming / "Microsoft/Windows/Start Menu/Programs", program_data / "Microsoft/Windows/Start Menu/Programs"]
     return [path for path in candidates if path.exists()]
 
 
-def windows_event():
+def windows_event() -> Optional[str]:
     if not IS_WINDOWS:
         return None
     try:
@@ -57,12 +60,12 @@ def windows_event():
 
 
 class DoctorOperations:
-    def __init__(self, service, paths, local=None):
+    def __init__(self, service: DoctorService, paths: AppPaths, local: Optional[Path] = None) -> None:
         self.service = service
         self.paths = paths
         self.local = local or Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local"))
 
-    def scan(self):
+    def scan(self) -> tuple[int, int]:
         stamp = now()
         count_exe = 0
         root = self.local / "Apps/2.0"
@@ -89,7 +92,7 @@ class DoctorOperations:
         self.service.finish_scan(stamp)
         return count_exe, count_shortcuts
 
-    def launch_exe(self, path_text):
+    def launch_exe(self, path_text: Optional[str]) -> str:
         row = self.service.installation(path_text) if path_text else None
         if not row or not Path(row["path"]).exists():
             return "Select an existing executable first."
@@ -110,7 +113,7 @@ class DoctorOperations:
             self.service.record_launch("exe", str(path), row["version"], "start_failed", error=str(exc))
             return f"Unable to start Akasia: {exc}"
 
-    def launch_shortcut(self, path):
+    def launch_shortcut(self, path: Optional[str]) -> str:
         if not path or not Path(path).exists():
             return "Select an existing shortcut first."
         try:
@@ -121,8 +124,8 @@ class DoctorOperations:
             self.service.record_launch("shortcut", path, None, "start_failed", error=str(exc))
             return f"Unable to open shortcut: {exc}"
 
-    def find_configs(self):
-        results = []
+    def find_configs(self) -> list[ConfigScan]:
+        results: list[ConfigScan] = []
         for path in self.local.rglob("user.config"):
             try:
                 raw = path.read_bytes()
@@ -138,7 +141,7 @@ class DoctorOperations:
                 pass
         return results
 
-    def config_health(self):
+    def config_health(self) -> list[ConfigScan]:
         items = self.find_configs()
         stamp = now()
         for item in items:
@@ -146,13 +149,13 @@ class DoctorOperations:
         self.service.commit()
         return items
 
-    def reset_configs(self):
+    def reset_configs(self) -> tuple[list[tuple[Path, str, Optional[str]]], Optional[Path]]:
         items = [item for item in self.find_configs() if not item["valid"]]
         if not items:
             return [], None
         folder = self.paths.backups / dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         folder.mkdir(parents=True, exist_ok=True)
-        results = []
+        results: list[tuple[Path, str, Optional[str]]] = []
         for item in items:
             original = item["path"]
             backup = folder / f"{uuid.uuid4().hex}_user.config"
@@ -168,11 +171,11 @@ class DoctorOperations:
         self.service.commit()
         return results, folder
 
-    def network_test(self):
-        results = []
+    def network_test(self) -> list[tuple[str, list[str], Optional[str]]]:
+        results: list[tuple[str, list[str], Optional[str]]] = []
         for host in ("akasia.mx", "api.ipify.org"):
             try:
-                addresses = sorted({address[4][0] for address in socket.getaddrinfo(host, 443)})
+                addresses = sorted({str(address[4][0]) for address in socket.getaddrinfo(host, 443)})
                 self.service.record_network_test(host, addresses)
                 results.append((host, addresses, None))
             except Exception as exc:
@@ -181,7 +184,7 @@ class DoctorOperations:
         self.service.commit()
         return results
 
-    def export_report(self):
+    def export_report(self) -> Path:
         self.paths.reports.mkdir(parents=True, exist_ok=True)
         path = self.paths.reports / f"AkasiaDiagnostic-{dt.datetime.now():%Y%m%d-%H%M%S}.json"
         path.write_text(json.dumps(self.service.report(), indent=2, ensure_ascii=False), encoding="utf-8")

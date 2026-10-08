@@ -33,7 +33,9 @@ class OperationsTests(unittest.TestCase):
         (cache / "Other.exe").touch()
         with patch("akasia.operations.shortcut_roots", return_value=[]):
             self.assertEqual(self.operations.scan(), (1, 0))
-        self.assertEqual(self.service.installation(str(executable))["identity_hash"], "0123456789abcdef")
+        installation = self.service.installation(str(executable))
+        assert installation is not None
+        self.assertEqual(installation["identity_hash"], "0123456789abcdef")
         self.assertIsNotNone(self.service.get("last_scan"))
 
     def test_config_scan_and_reset_back_up_only_corrupted_file(self):
@@ -51,6 +53,7 @@ class OperationsTests(unittest.TestCase):
         self.assertEqual(results[0][1], "reset")
         self.assertTrue(valid.exists())
         self.assertFalse(corrupted.exists())
+        assert folder is not None
         self.assertEqual(len(list(folder.glob("*_user.config"))), 1)
         self.assertEqual(len(list(corrupted.parent.glob("user.config.corrupted.*"))), 1)
         self.assertEqual(len(self.service.report()["backups"]), 1)

@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from akasia.config import resolve_paths
 from akasia.repository import DoctorRepository
@@ -21,6 +22,11 @@ class ConfigTests(unittest.TestCase):
             env_file.write_text(f"AKASIA_DOCTOR_DATA_DIR={configured}\n", encoding="utf-8")
             self.assertEqual(resolve_paths(environ={}, env_file=env_file).data, configured.resolve())
             self.assertEqual(resolve_paths(environ={"AKASIA_DOCTOR_DATA_DIR": directory}, env_file=env_file).data, Path(directory).resolve())
+
+    def test_default_env_file_stays_beside_entry_point(self):
+        with patch("akasia.config.dotenv_values", return_value={}) as read_env:
+            resolve_paths(environ={"LOCALAPPDATA": "C:/local"})
+        self.assertEqual(read_env.call_args.args[0], Path(__file__).resolve().parent.parent / ".env")
 
 
 class ServiceTests(unittest.TestCase):
@@ -44,7 +50,9 @@ class ServiceTests(unittest.TestCase):
 
         self.assertEqual(self.service.get("last_tested"), "failed.exe")
         self.assertEqual(self.service.get("last_working"), "working.exe")
-        self.assertEqual(self.service.installation("failed.exe")["last_result"], "exited")
+        installation = self.service.installation("failed.exe")
+        assert installation is not None
+        self.assertEqual(installation["last_result"], "exited")
         self.assertEqual(self.service.launch_history()[0]["exit_hex"], "0xE0434352")
 
     def test_shortcut_does_not_change_executable_state(self):

@@ -4,6 +4,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping, Optional, Union
 
 from dotenv import dotenv_values
 
@@ -25,7 +26,9 @@ class AppPaths:
         return self.data / "Reports"
 
 
-def resolve_paths(data_dir=None, environ=None, env_file=None):
+def resolve_paths(data_dir: Optional[Union[str, Path]] = None,
+                  environ: Optional[Mapping[str, str]] = None,
+                  env_file: Optional[Path] = None) -> AppPaths:
     environment = os.environ if environ is None else environ
     if env_file is None:
         env_file = (Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent) / ".env"

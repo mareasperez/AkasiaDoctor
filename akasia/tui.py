@@ -1,11 +1,18 @@
 """Interactive terminal dashboard for Akasia Doctor."""
 
+import sqlite3
+from typing import Optional
+
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Footer, Header, OptionList, RichLog, Static
 from textual.widgets.option_list import Option
+
+from .models import ConfigScan
+from .operations import DoctorOperations
+from .service import DoctorService
 
 
 class ResetConfirmation(ModalScreen[bool]):
@@ -35,7 +42,7 @@ class ResetConfirmation(ModalScreen[bool]):
         self.dismiss(True)
 
 
-class DoctorApp(App):
+class DoctorApp(App[None]):
     TITLE = "Akasia Doctor"
     SUB_TITLE = "ClickOnce diagnostics"
     CSS = """
@@ -57,14 +64,14 @@ class DoctorApp(App):
     """
     BINDINGS = [("q", "quit_doctor", "Quit"), ("s", "scan", "Scan"), ("r", "refresh", "Refresh")]
 
-    def __init__(self, service, operations):
+    def __init__(self, service: DoctorService, operations: DoctorOperations) -> None:
         super().__init__()
         self.service = service
         self.operations = operations
         self.view = "installations"
         self.busy = False
-        self.config_items = []
-        self.rows = []
+        self.config_items: list[ConfigScan] = []
+        self.rows: list[sqlite3.Row] = []
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -156,7 +163,7 @@ class DoctorApp(App):
 
     @on(OptionList.OptionSelected, "#nav")
     def navigate(self, event: OptionList.OptionSelected) -> None:
-        if not self.busy:
+        if not self.busy and event.option.id is not None:
             self.view = event.option.id
             self.refresh_view()
 
@@ -165,7 +172,7 @@ class DoctorApp(App):
         if not self.busy and self.view in ("installations", "shortcuts"):
             self.select_row(event.option_index)
 
-    def select_row(self, index):
+    def select_row(self, index: Optional[int]) -> None:
         if index is None or index >= len(self.rows):
             self.notify("Choose an item first.", severity="warning")
             return
@@ -199,7 +206,7 @@ class DoctorApp(App):
         else:
             self.select_row(self.query_one("#items", OptionList).highlighted)
 
-    def confirm_reset(self, confirmed: bool) -> None:
+    def confirm_reset(self, confirmed: Optional[bool]) -> None:
         if confirmed:
             self.start_operation("reset")
 
@@ -207,10 +214,10 @@ class DoctorApp(App):
     def launch(self) -> None:
         self.start_operation("exe" if self.view == "installations" else "shortcut")
 
-    def log_message(self, message):
+    def log_message(self, message: str) -> None:
         self.query_one("#activity", RichLog).write(message)
 
-    def start_operation(self, action):
+    def start_operation(self, action: str) -> None:
         if self.busy:
             self.notify("An operation is already running.", severity="warning")
             return
@@ -219,7 +226,7 @@ class DoctorApp(App):
         self.perform_action(action)
 
     @work(thread=True, exclusive=True)
-    def perform_action(self, action):
+    def perform_action(self, action: str) -> None:
         try:
             if action == "scan":
                 executables, shortcuts = self.operations.scan()
@@ -247,10 +254,10 @@ class DoctorApp(App):
             result = f"Operation failed: {exc}"
         self.call_from_thread(self.finish_action, result)
 
-    def set_config_items(self, items):
+    def set_config_items(self, items: list[ConfigScan]) -> None:
         self.config_items = items
 
-    def finish_action(self, result):
+    def finish_action(self, result: str) -> None:
         self.busy = False
         self.log_message(result)
         self.refresh_view()
