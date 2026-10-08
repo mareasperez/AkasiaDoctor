@@ -1,16 +1,32 @@
 # Akasia Doctor
 
-Akasia Doctor is a dependency-free Python terminal UI for discovering, launching, and diagnosing Akasia Punto de Venta ClickOnce installations on Windows.
+Akasia Doctor is a Windows terminal dashboard for discovering, launching, and diagnosing Akasia Punto de Venta ClickOnce installations.
 
 ## Run
 
-Double-click `run_akasia_doctor.cmd`, or run:
+Download `AkasiaDoctor.exe` from the latest GitHub Release and open it in a Windows terminal. It includes Python and its dependencies. To run the source instead:
 
 ```powershell
-python .\akasia_doctor.py
+poetry install
+poetry run python .\akasia_doctor.py
 ```
 
-Python 3.9 or newer is recommended. No third-party packages are required.
+Python 3.9 through 3.15 is supported for development. The dashboard uses Textual; its navigation, lists, and recovery confirmation are keyboard-accessible. `run_akasia_doctor.cmd` uses the locally built executable when present, otherwise the Poetry environment.
+
+## Configuration
+
+The data directory defaults to `%LOCALAPPDATA%\AkasiaDoctor`. To change it, set `AKASIA_DOCTOR_DATA_DIR` in the environment or copy `.env.example` to `.env` beside the script or executable and set its value there. `--data-dir` has highest priority, followed by the process environment and `.env`.
+
+## Build and release
+
+Run `build_akasia_doctor.cmd` on Windows to create `dist\AkasiaDoctor.exe`. Poetry installs the locked dependencies; PyInstaller creates the one-file console executable. To run tests:
+
+```powershell
+poetry install --with build
+poetry run python -m unittest discover -s tests -v
+```
+
+The GitHub Actions release workflow runs these tests, builds the executable on Windows, checks that it starts, and attaches it to a GitHub Release when a version tag such as `v1.0.0` is pushed. It can also be run manually from Actions with an existing tag. The workflow needs repository Actions enabled and permission to write Releases.
 
 ## Persistent history
 

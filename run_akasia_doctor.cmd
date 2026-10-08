@@ -1,11 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-where py >nul 2>&1
-if %errorlevel% equ 0 (py -3 akasia_doctor.py & goto :end)
-where python >nul 2>&1
-if %errorlevel% equ 0 (python akasia_doctor.py & goto :end)
-echo Python 3 was not found. Install Python 3 and try again.
+if exist "dist\AkasiaDoctor.exe" ("dist\AkasiaDoctor.exe" %* & goto :end)
+where poetry >nul 2>&1
+if %errorlevel% equ 0 (poetry run python akasia_doctor.py %* & goto :end)
+echo Install Poetry and run poetry install, or build the executable first.
 pause
 :end
 endlocal
