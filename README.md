@@ -17,7 +17,7 @@ The executable bundles Python and its dependencies. No Python or Poetry installa
 1. Open **Versions**. The first run scans automatically; use **Scan** to refresh. Select a version, then choose **Launch**. Check **Activity** for the immediate result and **History** for past launches.
 2. Open **Shortcuts** to select and launch a ClickOnce shortcut instead of an executable.
 3. Open **Configuration** and choose **Analyze**. If a damaged `user.config` appears, choose **Reset damaged** and confirm to back it up and rename it.
-4. Open **Network** to run **Test DNS**, or **Reports** to export the diagnostic history as JSON.
+4. Open **Network** to run **Test DNS**, or **Reports** to export the diagnostic history as JSON or choose **Open log folder**.
 
 The sidebar and lists support keyboard navigation; press `q` to quit. Backups and reports are saved under `%LOCALAPPDATA%\AkasiaDoctor` by default.
 
@@ -35,6 +35,10 @@ poetry run python .\akasia_doctor.py
 ## Configuration
 
 The data directory defaults to `%LOCALAPPDATA%\AkasiaDoctor`. To change it, set `AKASIA_DOCTOR_DATA_DIR` in the environment or copy `.env.example` to `.env` beside the script or executable and set its value there. `--data-dir` has highest priority, followed by the process environment and `.env`.
+
+## Application logs
+
+Failures in Akasia Doctor itself are written with tracebacks to `%LOCALAPPDATA%\AkasiaDoctor\Logs\doctor.log`, or to the `Logs` folder under your configured data directory. In the dashboard, **Reports** → **Open log folder** opens that location in Windows Explorer. The active log rotates at local midnight; dated files such as `doctor.log.2026-10-07` are retained for 14 days. Logs may include local file paths, so review them before sharing.
 
 ## Build and release
 

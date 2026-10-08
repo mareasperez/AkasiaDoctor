@@ -99,6 +99,7 @@ class DoctorApp(App[None]):
                     yield Button("Scan", id="primary", variant="primary")
                     yield Button("Select", id="select")
                     yield Button("Launch", id="launch", variant="success")
+                    yield Button("Open log folder", id="open-logs")
                 yield Static("ACTIVITY", id="activity-title")
                 yield RichLog(id="activity", wrap=True, markup=False)
         yield Footer()
@@ -164,6 +165,7 @@ class DoctorApp(App[None]):
         self.query_one("#select", Button).display = self.view in ("installations", "shortcuts", "config")
         self.query_one("#select", Button).label = "Reset damaged" if self.view == "config" else "Select"
         self.query_one("#launch", Button).display = self.view in ("installations", "shortcuts")
+        self.query_one("#open-logs", Button).display = self.view == "report"
 
     @on(OptionList.OptionSelected, "#nav")
     def navigate(self, event: OptionList.OptionSelected) -> None:
@@ -218,6 +220,10 @@ class DoctorApp(App[None]):
     def launch(self) -> None:
         self.start_operation("exe" if self.view == "installations" else "shortcut")
 
+    @on(Button.Pressed, "#open-logs")
+    def open_logs(self) -> None:
+        self.start_operation("logs")
+
     def log_message(self, message: str) -> None:
         self.query_one("#activity", RichLog).write(message)
 
@@ -250,6 +256,8 @@ class DoctorApp(App[None]):
                 result = "\n".join(f"{host}: {', '.join(addresses) if not error else 'FAILED - ' + error}" for host, addresses, error in self.operations.network_test())
             elif action == "report":
                 result = f"Report: {self.operations.export_report()}"
+            elif action == "logs":
+                result = f"Logs: {self.operations.open_logs()}"
             elif action == "exe":
                 result = self.operations.launch_exe(self.service.get("selected_exe"))
             else:

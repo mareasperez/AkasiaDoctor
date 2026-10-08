@@ -189,3 +189,8 @@ class DoctorOperations:
         path = self.paths.reports / f"AkasiaDiagnostic-{dt.datetime.now():%Y%m%d-%H%M%S}.json"
         path.write_text(json.dumps(self.service.report(), indent=2, ensure_ascii=False), encoding="utf-8")
         return path
+
+    def open_logs(self) -> Path:
+        self.paths.logs.mkdir(parents=True, exist_ok=True)
+        os.startfile(str(self.paths.logs))
+        return self.paths.logs

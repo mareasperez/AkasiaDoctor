@@ -63,6 +63,13 @@ class OperationsTests(unittest.TestCase):
         self.assertEqual(exported.parent, self.paths.reports)
         self.assertIn('"network_tests": []', exported.read_text(encoding="utf-8"))
 
+    def test_open_logs_folder_creates_directory_and_opens_explorer(self):
+        with patch("akasia.operations.os.startfile") as open_folder:
+            opened = self.operations.open_logs()
+        self.assertEqual(opened, self.paths.logs)
+        self.assertTrue(self.paths.logs.is_dir())
+        open_folder.assert_called_once_with(str(self.paths.logs))
+
 
 if __name__ == "__main__":
     unittest.main()

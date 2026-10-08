@@ -71,6 +71,29 @@ class DashboardTests(unittest.TestCase):
 
         asyncio.run(check())
 
+    def test_reports_open_log_folder(self):
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            with patch.object(self.operations, "scan", return_value=(0, 0)), patch.object(self.operations, "open_logs", return_value=self.paths.logs) as open_logs:
+                async with app.run_test(size=(100, 32)) as pilot:
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    app.view = "report"
+                    app.refresh_view()
+                    await pilot.pause()
+                    await pilot.click("#open-logs")
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    open_logs.assert_called_once_with()
+
+        asyncio.run(check())
+
 
 if __name__ == "__main__":
     unittest.main()
