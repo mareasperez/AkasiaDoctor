@@ -1,17 +1,36 @@
 # Akasia Doctor
 
-Akasia Doctor is a Windows terminal dashboard for discovering, launching, and diagnosing Akasia Punto de Venta ClickOnce installations.
+Akasia Doctor helps diagnose Akasia Punto de Venta ClickOnce installations on Windows. It finds installed versions and shortcuts, checks launch failures and Windows events, detects damaged `user.config` files, tests DNS, and exports diagnostic history. Configuration repair always asks for confirmation and makes a backup; it does not modify POS business data.
 
-## Run
+## Download and run
 
-Download `AkasiaDoctor.exe` from the latest GitHub Release and open it in a Windows terminal. It includes Python and its dependencies. To run the source instead:
+Download `AkasiaDoctor.exe` from the [latest GitHub Release](https://github.com/mareasperez/AkasiaDoctor/releases/latest) (available once a release has been published). Open a Windows terminal in the download folder and run:
+
+```powershell
+.\AkasiaDoctor.exe
+```
+
+The executable bundles Python and its dependencies. No Python or Poetry installation is needed to use it.
+
+## Use the dashboard
+
+1. Open **Versions**. The first run scans automatically; use **Scan** to refresh. Select a version, then choose **Launch**. Check **Activity** for the immediate result and **History** for past launches.
+2. Open **Shortcuts** to select and launch a ClickOnce shortcut instead of an executable.
+3. Open **Configuration** and choose **Analyze**. If a damaged `user.config` appears, choose **Reset damaged** and confirm to back it up and rename it.
+4. Open **Network** to run **Test DNS**, or **Reports** to export the diagnostic history as JSON.
+
+The sidebar and lists support keyboard navigation; press `q` to quit. Backups and reports are saved under `%LOCALAPPDATA%\AkasiaDoctor` by default.
+
+## Run from source
+
+With Python 3.9 through 3.15 and Poetry installed:
 
 ```powershell
 poetry install
 poetry run python .\akasia_doctor.py
 ```
 
-Python 3.9 through 3.15 is supported for development. The dashboard uses Textual; its navigation, lists, and recovery confirmation are keyboard-accessible. `run_akasia_doctor.cmd` uses the locally built executable when present, otherwise the Poetry environment.
+`run_akasia_doctor.cmd` uses a locally built executable when present, otherwise the Poetry environment.
 
 ## Configuration
 
