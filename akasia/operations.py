@@ -111,7 +111,11 @@ class DoctorOperations:
             hex_code = f"0x{code & 0xFFFFFFFF:08X}"
             event = windows_event()
             self.service.record_launch("exe", str(path), row["version"], "exited", process.pid, code, event)
-            diagnosis = "\nDiagnosis: unhandled .NET exception." if hex_code == "0xE0434352" else ""
+            if hex_code == "0xE0434352" and event and "System.Xml.XmlException" in event and "System.Configuration" in event:
+                diagnosis = ("\nDiagnosis: Akasia could not read its configuration XML."
+                             "\nOpen Configuration and run Analyze. If damaged settings are found, back them up and reset them.")
+            else:
+                diagnosis = "\nDiagnosis: unhandled .NET exception." if hex_code == "0xE0434352" else ""
             return f"Akasia exited: {code} ({hex_code}){diagnosis}" + (f"\nWindows event: {event}" if event else "")
         except Exception as exc:
             LOGGER.exception("Unable to launch executable %s", path)

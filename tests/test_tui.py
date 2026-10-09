@@ -135,6 +135,26 @@ class DashboardTests(unittest.TestCase):
 
         asyncio.run(check())
 
+    def test_activity_shows_summary_and_keeps_windows_event_in_details(self):
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            with patch.object(self.operations, "scan", return_value=(0, 0)):
+                async with app.run_test(size=(100, 32)) as pilot:
+                    await pilot.pause()
+                    event = "Windows event: System.Xml.XmlException " + "stack frame " * 80
+                    app.log_message("Akasia exited: 3762504530 (0xE0434352)\nDiagnosis: Invalid XML configuration.\n" + event)
+                    activity = app.query_one("#activity", RichLog)
+                    compact = "\n".join("".join(segment.text for segment in line) for line in activity.lines)
+                    self.assertIn("Invalid XML configuration", compact)
+                    self.assertIn("Expand", compact)
+                    self.assertNotIn("stack frame", compact)
+                    await pilot.click("#expand-activity")
+                    detail = app.screen.query_one("#activity-detail", RichLog)
+                    expanded = "\n".join("".join(segment.text for segment in line) for line in detail.lines)
+                    self.assertIn("stack frame", expanded)
+
+        asyncio.run(check())
+
     def test_ctrl_c_copies_first_and_quits_on_second_press(self):
         stamp = now()
         self.service.save_installation("C:/Akasia.exe", "1.0", stamp, None, stamp)

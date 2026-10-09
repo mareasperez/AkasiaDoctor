@@ -282,7 +282,8 @@ class DoctorApp(App[None]):
 
     def log_message(self, message: str) -> None:
         self.activity_messages.append(message)
-        self.query_one("#activity", RichLog).write(message)
+        summary, separator, _ = message.partition("\nWindows event: ")
+        self.query_one("#activity", RichLog).write(summary + ("\nWindows event: see Expand for details." if separator else ""))
         if isinstance(self.screen, ActivityScreen):
             self.screen.append(message)
         LOGGER.info("%s", message)

@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from akasia.config import AppPaths
 from akasia.operations import DoctorOperations
@@ -57,6 +57,24 @@ class OperationsTests(unittest.TestCase):
         self.assertEqual(len(list(folder.glob("*_user.config"))), 1)
         self.assertEqual(len(list(corrupted.parent.glob("user.config.corrupted.*"))), 1)
         self.assertEqual(len(self.service.report()["backups"]), 1)
+
+    def test_launch_explains_configuration_xml_error(self):
+        executable = self.local / "Akasia.exe"
+        executable.touch()
+        self.service.save_installation(str(executable), "1.0", "now", None, "now")
+        self.service.commit()
+        event = "System.Xml.XmlException at System.Configuration.BaseConfigurationRecord.InitConfigFromFile()"
+        process = Mock(pid=123)
+        process.poll.return_value = 0xE0434352
+
+        with patch("akasia.operations.subprocess.Popen", return_value=process), \
+             patch("akasia.operations.time.sleep"), \
+             patch("akasia.operations.windows_event", return_value=event):
+            result = self.operations.launch_exe(str(executable))
+
+        self.assertIn("configuration XML", result)
+        self.assertIn("Configuration", result)
+        self.assertIn("Windows event: " + event, result)
 
     def test_export_report_uses_configured_directory(self):
         exported = self.operations.export_report()
