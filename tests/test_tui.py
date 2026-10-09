@@ -107,6 +107,44 @@ class DashboardTests(unittest.TestCase):
 
         asyncio.run(check())
 
+    def test_can_select_another_shortcut_after_launch(self):
+        stamp = now()
+        self.service.save_shortcut("C:/Akasia-first.appref-ms", ".appref-ms", stamp, stamp)
+        self.service.save_shortcut("C:/Akasia-second.appref-ms", ".appref-ms", stamp, stamp)
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            with patch.object(self.operations, "launch_shortcut", return_value="ClickOnce shortcut invoked.") as launch:
+                async with app.run_test(size=(100, 32)) as pilot:
+                    nav = app.query_one("#nav", OptionList)
+                    nav.focus()
+                    await pilot.press("down", "enter")
+                    items = app.query_one("#items", OptionList)
+                    items.highlighted = 1
+                    items.focus()
+                    await pilot.press("enter")
+                    self.assertEqual(self.service.get("selected_shortcut"), "C:/Akasia-second.appref-ms")
+                    await pilot.click("#launch")
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    self.assertEqual(items.highlighted, 1)
+                    await pilot.press("up", "enter")
+                    self.assertEqual(self.service.get("selected_shortcut"), "C:/Akasia-first.appref-ms")
+                    await pilot.click("#launch")
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    self.assertEqual([call.args[0] for call in launch.call_args_list],
+                                     ["C:/Akasia-second.appref-ms", "C:/Akasia-first.appref-ms"])
+
+        asyncio.run(check())
+
     def test_activity_can_be_expanded_to_read_full_error(self):
         stamp = now()
         self.service.save_installation("C:/Akasia.exe", "1.0", stamp, None, stamp)

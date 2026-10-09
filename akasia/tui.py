@@ -178,7 +178,8 @@ class DoctorApp(App[None]):
                   "config": "Configuration health", "network": "Network diagnostics",
                   "history": "Launch history", "report": "Diagnostic reports"}
         self.query_one("#heading", Static).update(titles[self.view].upper())
-        selected = self.service.get("selected_exe") or "<none>"
+        selection_key = "selected_shortcut" if self.view == "shortcuts" else "selected_exe"
+        selected = self.service.get(selection_key) or "<none>"
         tested = self.service.get("last_tested") or "<none>"
         working = self.service.get("last_working") or "<none>"
         self.query_one("#status", Static).update(f"Selected: {selected}\nLast tested: {tested}\nLast working: {working}")
@@ -192,7 +193,8 @@ class DoctorApp(App[None]):
         elif self.view == "shortcuts":
             self.rows = self.service.shortcuts()
             for index, row in enumerate(self.rows):
-                items.add_option(Option(row["path"], id=str(index)))
+                marker = "  *" if row["path"] == selected else ""
+                items.add_option(Option(f"{row['path']}{marker}", id=str(index)))
         elif self.view == "config":
             self.rows = []
             for item in self.config_items:
@@ -210,7 +212,7 @@ class DoctorApp(App[None]):
             items.add_option(Option(messages[self.view], disabled=True))
         elif self.rows:
             items.highlighted = next((index for index, row in enumerate(self.rows)
-                                      if self.view == "installations" and row["path"] == selected), 0)
+                                      if row["path"] == selected), 0)
         primary = self.query_one("#primary", Button)
         primary.label = {"installations": "Scan", "shortcuts": "Scan", "config": "Analyze",
                          "network": "Test DNS", "history": "Refresh", "report": "Export JSON"}[self.view]
