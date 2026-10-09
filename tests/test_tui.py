@@ -73,6 +73,40 @@ class DashboardTests(unittest.TestCase):
 
         asyncio.run(check())
 
+    def test_can_select_another_version_after_launch(self):
+        stamp = now()
+        self.service.save_installation("C:/Akasia-old.exe", "1.0", stamp, None, stamp)
+        self.service.save_installation("C:/Akasia-new.exe", "2.0", stamp, None, stamp)
+        self.service.commit()
+
+        async def check():
+            app = DoctorApp(self.service, self.operations)
+            with patch.object(self.operations, "launch_exe", return_value="Akasia is running. PID: 123") as launch:
+                async with app.run_test(size=(100, 32)) as pilot:
+                    items = app.query_one("#items", OptionList)
+                    items.highlighted = 1
+                    items.focus()
+                    await pilot.press("enter")
+                    await pilot.click("#launch")
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    self.assertEqual(items.highlighted, 1)
+                    await pilot.press("up", "enter")
+                    self.assertEqual(self.service.get("selected_exe"), "C:/Akasia-old.exe")
+                    await pilot.click("#launch")
+                    for _ in range(10):
+                        if not app.busy:
+                            break
+                        await pilot.pause()
+                    self.assertFalse(app.busy)
+                    self.assertEqual([call.args[0] for call in launch.call_args_list],
+                                     ["C:/Akasia-new.exe", "C:/Akasia-old.exe"])
+
+        asyncio.run(check())
+
     def test_activity_can_be_expanded_to_read_full_error(self):
         stamp = now()
         self.service.save_installation("C:/Akasia.exe", "1.0", stamp, None, stamp)

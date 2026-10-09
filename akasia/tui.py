@@ -209,7 +209,8 @@ class DoctorApp(App[None]):
                         "history": "No launches recorded yet.", "report": "Export a JSON report with diagnostic history."}
             items.add_option(Option(messages[self.view], disabled=True))
         elif self.rows:
-            items.highlighted = 0
+            items.highlighted = next((index for index, row in enumerate(self.rows)
+                                      if self.view == "installations" and row["path"] == selected), 0)
         primary = self.query_one("#primary", Button)
         primary.label = {"installations": "Scan", "shortcuts": "Scan", "config": "Analyze",
                          "network": "Test DNS", "history": "Refresh", "report": "Export JSON"}[self.view]
@@ -324,12 +325,14 @@ class DoctorApp(App[None]):
         except Exception as exc:
             LOGGER.exception("Operation %s failed", action)
             result = f"Operation failed: {exc}"
-        self.call_from_thread(self.finish_action, result)
+        self.call_from_thread(self.finish_action, result, action)
 
     def set_config_items(self, items: list[ConfigScan]) -> None:
         self.config_items = items
 
-    def finish_action(self, result: str) -> None:
+    def finish_action(self, result: str, action: str) -> None:
         self.busy = False
         self.log_message(result)
         self.refresh_view()
+        if (action == "exe" and self.view == "installations") or (action == "shortcut" and self.view == "shortcuts"):
+            self.query_one("#items", OptionList).focus()
